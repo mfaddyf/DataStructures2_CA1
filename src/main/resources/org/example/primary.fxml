@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="org.example.PrimaryController"
+            style="-fx-background-color: #f5f7fa;">
+
+    <!-- TOP TOOLBAR -->
+    <top>
+        <HBox spacing="10" alignment="CENTER_LEFT"
+              style="-fx-background-color: #ffffff; -fx-border-color: #dddddd;">
+            <padding>
+                <Insets top="12" right="12" bottom="12" left="12"/>
+            </padding>
+
+            <Button text="Open" onAction="#openImage" styleClass="primary-btn"/>
+            <Button text="B/W" onAction="#convertToBinary"/>
+            <Button text="Detect" onAction="#detectLeaves"/>
+            <Button text="Random" onAction="#showRandomClusters"/>
+            <Button text="Show B/W" onAction="#showBinaryAgain"/>
+            <Button text="Clear" onAction="#clearSamples"/>
+            <Button text="Start" onAction="#chooseStartCluster"/>
+            <Button text="Animate" onAction="#animateTspPath"/>
+            <Button text="Reset" onAction="#resetView"/>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <CheckBox fx:id="labelsCheckBox" text="Show Labels" selected="true" onAction="#toggleLabels"/>
+        </HBox>
+    </top>
+
+    <!-- LEFT CONTROL PANEL -->
+    <left>
+        <VBox spacing="15"
+              style="-fx-background-color: white; -fx-border-color: #dddddd;"
+              prefWidth="260">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+
+            <Label text="Detection Settings"
+                   style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+
+            <!-- Card 1 -->
+            <VBox spacing="6" style="-fx-background-color: #fafafa; -fx-padding: 10; -fx-background-radius: 8;">
+                <Label text="Hue Tolerance"/>
+                <Slider fx:id="hueSlider" min="0" max="40" value="16"/>
+
+                <Label text="Min Saturation"/>
+                <Slider fx:id="minSatSlider" min="0" max="1" value="0.18"/>
+
+                <Label text="Min Brightness"/>
+                <Slider fx:id="minBrightSlider" min="0" max="1" value="0.15"/>
+            </VBox>
+
+            <!-- Card 2 -->
+            <VBox spacing="6" style="-fx-background-color: #fafafa; -fx-padding: 10; -fx-background-radius: 8;">
+                <Label text="Min Cluster Size"/>
+                <Slider fx:id="minClusterSlider" min="1" max="500" value="25"/>
+
+                <Label text="Max Cluster Size"/>
+                <Slider fx:id="maxClusterSlider" min="100" max="20000" value="5000"/>
+            </VBox>
+        </VBox>
+    </left>
+
+    <!-- CENTER IMAGES -->
+    <center>
+        <HBox spacing="25" alignment="CENTER">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+
+            <!-- ORIGINAL -->
+            <VBox spacing="8" alignment="TOP_CENTER">
+                <Label text="Original Image"
+                       style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+
+                <StackPane prefWidth="520" prefHeight="560"
+                           style="-fx-background-color: white; -fx-border-color: #cccccc; -fx-background-radius: 10;">
+                    <ImageView fx:id="originalView"
+                               fitWidth="500" fitHeight="540"
+                               preserveRatio="true"/>
+                    <Pane fx:id="overlayPane"
+                          pickOnBounds="false"
+                          maxWidth="500" maxHeight="540"/>
+                </StackPane>
+            </VBox>
+
+            <!-- BINARY -->
+            <VBox spacing="8" alignment="TOP_CENTER">
+                <Label text="Processed View"
+                       style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+
+                <StackPane prefWidth="520" prefHeight="560"
+                           style="-fx-background-color: white; -fx-border-color: #cccccc; -fx-background-radius: 10;">
+                    <ImageView fx:id="binaryView"
+                               fitWidth="500" fitHeight="540"
+                               preserveRatio="true"/>
+                </StackPane>
+            </VBox>
+        </HBox>
+    </center>
+
+    <!-- STATUS BAR -->
+    <bottom>
+        <HBox style="-fx-background-color: #ffffff; -fx-border-color: #dddddd;">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+
+            <Label fx:id="statusLabel"
+                   text="Load an image to begin."
+                   style="-fx-font-size: 13px;"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>
