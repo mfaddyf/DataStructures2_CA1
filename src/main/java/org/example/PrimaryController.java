@@ -31,51 +31,51 @@ import java.util.List;
 
 public class PrimaryController {
 
+    // ui elements
     @FXML
-    private ImageView originalView;
-
+    private ImageView originalView; // original image display
     @FXML
-    private ImageView binaryView;
-
+    private ImageView binaryView; // binary img display
     @FXML
-    private Pane overlayPane;
-
+    private Pane overlayPane; // draws the overlay on the images (boxes, markers, etc)
     @FXML
-    private Label statusLabel;
-
+    private Label statusLabel; // status messages for the user
     @FXML
-    private CheckBox labelsCheckBox;
-
+    private CheckBox labelsCheckBox; // allows for toggle of cluster labels
     @FXML
     private Slider hueSlider;
-
     @FXML
     private Slider minSatSlider;
-
     @FXML
     private Slider minBrightSlider;
-
     @FXML
     private Slider minClusterSlider;
-
     @FXML
     private Slider maxClusterSlider;
-
     private Image originalImage;
     private Image binaryImage;
     private boolean[] binaryPixels;
     private List<LeafCluster> clusters = new ArrayList<>();
-    private final List<Color> sampledLeafColors = new ArrayList<>();
-    private final List<SamplePoint> samplePoints = new ArrayList<>();
-    private final ProcessingSettings settings = new ProcessingSettings();
+    // sample colours
+    private List<Color> sampledLeafColors = new ArrayList<>();
+    private List<SamplePoint> samplePoints = new ArrayList<>();
+    private ProcessingSettings settings = new ProcessingSettings();
+    // tsp related
     private LeafCluster selectedStartCluster;
     private Timeline tspTimeline;
 
+    /**
+     * called automatically when the ui is loaded
+     * registers mouse clicking for sampling leaf colours
+     */
     @FXML
     public void initialize() {
         originalView.addEventHandler(MouseEvent.MOUSE_CLICKED, this::sampleLeafColor);
     }
 
+    /**
+     * opens an image file and loads it into the ui
+     */
     @FXML
     public void openImage() {
         FileChooser chooser = new FileChooser();
@@ -92,15 +92,18 @@ public class PrimaryController {
         try {
             BufferedImage buffered = ImageIO.read(file);
 
+            // validating the image decoding
             if (buffered == null) {
                 showError("Could not open image",
                         "This file could not be decoded as an image.\nTry opening it in Paint and saving it again as PNG.");
                 return;
             }
 
+            // converting to javafx image
             originalImage = SwingFXUtils.toFXImage(buffered, null);
             originalView.setImage(originalImage);
 
+            // clear/reset all the processing states
             binaryImage = null;
             binaryPixels = null;
             clusters.clear();
@@ -115,6 +118,10 @@ public class PrimaryController {
         }
     }
 
+    /**
+     * converts the original image into a binary (black and white) version using
+     * thresholds , sampled leaf colours (if chosen)
+     */
     @FXML
     public void convertToBinary() {
         if (originalImage == null) {
@@ -131,6 +138,9 @@ public class PrimaryController {
         statusLabel.setText("Converted to black/white using " + sampledLeafColors.size() + " sampled colour(s).");
     }
 
+    /**
+     * detects connected clusters from the binary img
+     */
     @FXML
     public void detectLeaves() {
         if (originalImage == null) {
@@ -140,6 +150,7 @@ public class PrimaryController {
 
         updateSettingsFromUI();
 
+        // ensures that binary img exists
         if (binaryPixels == null) {
             binaryPixels = ImageProcessor.convertToBinaryArray(originalImage, sampledLeafColors, settings);
             binaryImage = ImageProcessor.makeBinaryImage(originalImage, sampledLeafColors, settings);
@@ -149,9 +160,11 @@ public class PrimaryController {
         int width = (int) originalImage.getWidth();
         int height = (int) originalImage.getHeight();
 
+        // find connected clusters
         clusters = ImageProcessor.findClusters(binaryPixels, width, height, settings);
+        // sort clusters by size ( largest -> smallest )
         clusters.sort(Comparator.comparingInt((LeafCluster c) -> c.pixelCount).reversed());
-
+        // assigning  ids to clusters ( largest = 1 -> smallest = whatevaaaaa )
         for (int i = 0; i < clusters.size(); i++) {
             clusters.get(i).id = i + 1;
         }
@@ -160,6 +173,9 @@ public class PrimaryController {
         statusLabel.setText("Detected " + clusters.size() + " leaf clusters.");
     }
 
+    /**
+     *
+     */
     @FXML
     public void showRandomClusters() {
         if (clusters == null || clusters.isEmpty()) {
@@ -174,6 +190,9 @@ public class PrimaryController {
         }
     }
 
+    /**
+     *
+     */
     @FXML
     public void showBinaryAgain() {
         if (binaryImage != null) {
@@ -182,6 +201,9 @@ public class PrimaryController {
         }
     }
 
+    /**
+     *
+     */
     @FXML
     public void clearSamples() {
         sampledLeafColors.clear();
@@ -195,6 +217,9 @@ public class PrimaryController {
         statusLabel.setText("Cleared sampled colours.");
     }
 
+    /**
+     *
+     */
     @FXML
     public void resetView() {
         if (originalImage == null) {
@@ -218,11 +243,17 @@ public class PrimaryController {
         statusLabel.setText("Reset view. Click leaves to sample colours again.");
     }
 
+    /**
+     *
+     */
     @FXML
     public void toggleLabels() {
         drawClusterBoxes();
     }
 
+    /**
+     *
+     */
     @FXML
     public void chooseStartCluster() {
         if (clusters == null || clusters.isEmpty()) {
@@ -233,6 +264,9 @@ public class PrimaryController {
         statusLabel.setText("Click a cluster rectangle to choose the TSP start cluster.");
     }
 
+    /**
+     * animates a tsp ( travelling salesman ) path in between the clusters
+     */
     @FXML
     public void animateTspPath() {
         if (clusters == null || clusters.isEmpty()) {
@@ -283,191 +317,9 @@ public class PrimaryController {
         tspTimeline.play();
     }
 
-    private void updateSettingsFromUI() {
-        settings.hueTolerance = hueSlider.getValue();
-        settings.minSaturation = minSatSlider.getValue();
-        settings.minBrightness = minBrightSlider.getValue();
-        settings.minClusterSize = (int) minClusterSlider.getValue();
-        settings.maxClusterSize = (int) maxClusterSlider.getValue();
-    }
-
-    private void sampleLeafColor(MouseEvent event) {
-        if (originalImage == null) {
-            return;
-        }
-
-        double imgWidth = originalImage.getWidth();
-        double imgHeight = originalImage.getHeight();
-
-        Bounds bounds = originalView.getBoundsInLocal();
-        double viewWidth = bounds.getWidth();
-        double viewHeight = bounds.getHeight();
-
-        double scale = Math.min(viewWidth / imgWidth, viewHeight / imgHeight);
-        double displayedWidth = imgWidth * scale;
-        double displayedHeight = imgHeight * scale;
-
-        double offsetX = (viewWidth - displayedWidth) / 2.0;
-        double offsetY = (viewHeight - displayedHeight) / 2.0;
-
-        Point2D point = originalView.sceneToLocal(event.getSceneX(), event.getSceneY());
-        double mouseX = point.getX();
-        double mouseY = point.getY();
-
-        if (mouseX < offsetX || mouseX > offsetX + displayedWidth ||
-                mouseY < offsetY || mouseY > offsetY + displayedHeight) {
-            return;
-        }
-
-        int imageX = (int) ((mouseX - offsetX) / scale);
-        int imageY = (int) ((mouseY - offsetY) / scale);
-
-        if (imageX < 0 || imageY < 0 || imageX >= imgWidth || imageY >= imgHeight) {
-            return;
-        }
-
-        Color picked = originalImage.getPixelReader().getColor(imageX, imageY);
-        sampledLeafColors.add(picked);
-        samplePoints.add(new SamplePoint(imageX, imageY));
-
-        drawOverlayOnly();
-
-        statusLabel.setText("Sampled colour " + sampledLeafColors.size()
-                + " | hue=" + (int) picked.getHue()
-                + " sat=" + String.format("%.2f", picked.getSaturation())
-                + " bright=" + String.format("%.2f", picked.getBrightness()));
-    }
-
-    private void drawClusterBoxes() {
-        overlayPane.getChildren().clear();
-
-        if (originalImage == null) {
-            return;
-        }
-
-        double imgWidth = originalImage.getWidth();
-        double imgHeight = originalImage.getHeight();
-
-        double viewWidth = originalView.getFitWidth();
-        double viewHeight = originalView.getFitHeight();
-
-        double scale = Math.min(viewWidth / imgWidth, viewHeight / imgHeight);
-        double displayedWidth = imgWidth * scale;
-        double displayedHeight = imgHeight * scale;
-
-        double offsetX = (viewWidth - displayedWidth) / 2.0;
-        double offsetY = (viewHeight - displayedHeight) / 2.0;
-
-        if (clusters != null) {
-            for (LeafCluster cluster : clusters) {
-                Rectangle rect = new Rectangle(
-                        offsetX + cluster.minX * scale,
-                        offsetY + cluster.minY * scale,
-                        Math.max(1, cluster.getBoxWidth() * scale),
-                        Math.max(1, cluster.getBoxHeight() * scale)
-                );
-                rect.setFill(Color.TRANSPARENT);
-                rect.setStroke(Color.BLUE);
-                rect.setStrokeWidth(2);
-
-                LeafCluster clicked = cluster;
-                rect.setOnMouseClicked(e -> {
-                    selectedStartCluster = clicked;
-
-                    statusLabel.setText(
-                            "Cluster " + clicked.id +
-                                    " selected | pixels: " + clicked.pixelCount +
-                                    " | box: " + clicked.getBoxWidth() + "x" + clicked.getBoxHeight()
-                    );
-
-                    Image selected = ImageProcessor.makeSelectedClusterImage(clicked.root);
-                    if (selected != null) {
-                        binaryView.setImage(selected);
-                    }
-
-                    e.consume();
-                });
-
-                overlayPane.getChildren().add(rect);
-
-                if (labelsCheckBox.isSelected()) {
-                    Text label = new Text(
-                            offsetX + cluster.minX * scale,
-                            Math.max(12, offsetY + cluster.minY * scale - 2),
-                            String.valueOf(cluster.id)
-                    );
-                    label.setFill(Color.BLUE);
-                    label.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
-                    overlayPane.getChildren().add(label);
-                }
-            }
-        }
-
-        redrawSampleMarkers(offsetX, offsetY, scale);
-    }
-
-    private void drawOverlayOnly() {
-        overlayPane.getChildren().clear();
-
-        if (originalImage == null) {
-            return;
-        }
-
-        double imgWidth = originalImage.getWidth();
-        double imgHeight = originalImage.getHeight();
-
-        double viewWidth = originalView.getFitWidth();
-        double viewHeight = originalView.getFitHeight();
-
-        double scale = Math.min(viewWidth / imgWidth, viewHeight / imgHeight);
-        double displayedWidth = imgWidth * scale;
-        double displayedHeight = imgHeight * scale;
-
-        double offsetX = (viewWidth - displayedWidth) / 2.0;
-        double offsetY = (viewHeight - displayedHeight) / 2.0;
-
-        redrawSampleMarkers(offsetX, offsetY, scale);
-    }
-
-    private void redrawSampleMarkers(double offsetX, double offsetY, double scale) {
-        for (SamplePoint p : samplePoints) {
-            Circle marker = new Circle(
-                    offsetX + p.x * scale,
-                    offsetY + p.y * scale,
-                    5
-            );
-            marker.setFill(Color.TRANSPARENT);
-            marker.setStroke(Color.RED);
-            marker.setStrokeWidth(2);
-            overlayPane.getChildren().add(marker);
-        }
-    }
-
-    private Stage getStage() {
-        return (Stage) originalView.getScene().getWindow();
-    }
-
-    private void showError(String header, String content) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Image Error");
-        alert.setHeaderText(header);
-        alert.setContentText(content);
-        alert.showAndWait();
-    }
-
-    private static class SamplePoint {
-        int x;
-        int y;
-
-        SamplePoint(int x, int y) {
-            this.x = x;
-            this.y = y;
-        }
-    }
-
-    // ---------------------------
-    // HELPER METHODS
-    // ---------------------------
+    /**
+     * draws one animated step / line between the clusters
+     */
     private void drawAnimatedStep(LeafCluster from, LeafCluster to) {
         if (originalImage == null) {
             return;
@@ -508,4 +360,209 @@ public class PrimaryController {
         overlayPane.getChildren().add(line);
         overlayPane.getChildren().add(highlight);
     }
+
+    /**
+     * updates the processing settings from the ui sliders ( brightness , saturation , etc )
+     */
+    private void updateSettingsFromUI() {
+        settings.hueTolerance = hueSlider.getValue();
+        settings.minSaturation = minSatSlider.getValue();
+        settings.minBrightness = minBrightSlider.getValue();
+        settings.minClusterSize = (int) minClusterSlider.getValue();
+        settings.maxClusterSize = (int) maxClusterSlider.getValue();
+    }
+
+    /**
+     * allow the user to click the image and sample a leaf colour
+     */
+    private void sampleLeafColor(MouseEvent event) {
+        if (originalImage == null) {
+            return;
+        }
+
+        // lots and lots...... and lots........... of maths........... brain melted BUT IT WORKS
+        // converts mouse co-ords to img co-ords
+        double imgWidth = originalImage.getWidth();
+        double imgHeight = originalImage.getHeight();
+
+        Bounds bounds = originalView.getBoundsInLocal();
+        double viewWidth = bounds.getWidth();
+        double viewHeight = bounds.getHeight();
+
+        double scale = Math.min(viewWidth / imgWidth, viewHeight / imgHeight);
+        double displayedWidth = imgWidth * scale;
+        double displayedHeight = imgHeight * scale;
+
+        double offsetX = (viewWidth - displayedWidth) / 2.0;
+        double offsetY = (viewHeight - displayedHeight) / 2.0;
+
+        Point2D point = originalView.sceneToLocal(event.getSceneX(), event.getSceneY());
+        double mouseX = point.getX();
+        double mouseY = point.getY();
+
+        int imageX = (int) ((mouseX - offsetX) / scale);
+        int imageY = (int) ((mouseY - offsetY) / scale);
+
+        // bounds checking
+        if (imageX < 0 || imageY < 0 || imageX >= imgWidth || imageY >= imgHeight) {
+            return;
+        }
+
+        // getting that pixel colour
+        Color picked = originalImage.getPixelReader().getColor(imageX, imageY);
+        sampledLeafColors.add(picked);
+        samplePoints.add(new SamplePoint(imageX, imageY));
+
+        drawOverlayOnly();
+
+        statusLabel.setText("Sampled colour " + sampledLeafColors.size()
+                + " | hue=" + (int) picked.getHue()
+                + " sat=" + String.format("%.2f", picked.getSaturation())
+                + " bright=" + String.format("%.2f", picked.getBrightness()));
+    }
+
+    /**
+     * drqws the bounding boxes around detected clusters
+     */
+    private void drawClusterBoxes() {
+        overlayPane.getChildren().clear();
+
+        if (originalImage == null) {
+            return;
+        }
+
+        double imgWidth = originalImage.getWidth();
+        double imgHeight = originalImage.getHeight();
+
+        double viewWidth = originalView.getFitWidth();
+        double viewHeight = originalView.getFitHeight();
+
+        double scale = Math.min(viewWidth / imgWidth, viewHeight / imgHeight);
+        double displayedWidth = imgWidth * scale;
+        double displayedHeight = imgHeight * scale;
+
+        double offsetX = (viewWidth - displayedWidth) / 2.0;
+        double offsetY = (viewHeight - displayedHeight) / 2.0;
+
+        if (clusters != null) {
+            for (LeafCluster cluster : clusters) {
+                Rectangle rect = new Rectangle(
+                        offsetX + cluster.minX * scale,
+                        offsetY + cluster.minY * scale,
+                        Math.max(1, cluster.getBoxWidth() * scale),
+                        Math.max(1, cluster.getBoxHeight() * scale)
+                );
+                rect.setFill(Color.TRANSPARENT);
+                rect.setStroke(Color.BLUE);
+                rect.setStrokeWidth(2);
+
+                // clicking on the selected cluster
+                LeafCluster clicked = cluster;
+                rect.setOnMouseClicked(e -> {
+                    selectedStartCluster = clicked;
+
+                    statusLabel.setText(
+                            "Cluster " + clicked.id +
+                                    " selected | pixels: " + clicked.pixelCount +
+                                    " | box: " + clicked.getBoxWidth() + "x" + clicked.getBoxHeight()
+                    );
+
+                    Image selected = ImageProcessor.makeSelectedClusterImage(clicked.root);
+                    if (selected != null) {
+                        binaryView.setImage(selected);
+                    }
+
+                    e.consume();
+                });
+
+                overlayPane.getChildren().add(rect);
+
+                // optional label displayed with rectangled cluster
+                if (labelsCheckBox.isSelected()) {
+                    Text label = new Text(
+                            offsetX + cluster.minX * scale,
+                            Math.max(12, offsetY + cluster.minY * scale - 2),
+                            String.valueOf(cluster.id)
+                    );
+                    label.setFill(Color.BLUE);
+                    label.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
+                    overlayPane.getChildren().add(label);
+                }
+            }
+        }
+
+        redrawSampleMarkers(offsetX, offsetY, scale);
+    }
+
+    /**
+     *
+     */
+    private void drawOverlayOnly() {
+        overlayPane.getChildren().clear();
+
+        if (originalImage == null) {
+            return;
+        }
+
+        double imgWidth = originalImage.getWidth();
+        double imgHeight = originalImage.getHeight();
+
+        double viewWidth = originalView.getFitWidth();
+        double viewHeight = originalView.getFitHeight();
+
+        double scale = Math.min(viewWidth / imgWidth, viewHeight / imgHeight);
+        double displayedWidth = imgWidth * scale;
+        double displayedHeight = imgHeight * scale;
+
+        double offsetX = (viewWidth - displayedWidth) / 2.0;
+        double offsetY = (viewHeight - displayedHeight) / 2.0;
+
+        redrawSampleMarkers(offsetX, offsetY, scale);
+    }
+
+    /**
+     *
+     */
+    private void redrawSampleMarkers(double offsetX, double offsetY, double scale) {
+        for (SamplePoint p : samplePoints) {
+            Circle marker = new Circle(
+                    offsetX + p.x * scale,
+                    offsetY + p.y * scale,
+                    5
+            );
+            marker.setFill(Color.TRANSPARENT);
+            marker.setStroke(Color.RED);
+            marker.setStrokeWidth(2);
+            overlayPane.getChildren().add(marker);
+        }
+    }
+
+    private Stage getStage() {
+        return (Stage) originalView.getScene().getWindow();
+    }
+
+    /**
+     *
+     */
+    private void showError(String header, String content) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Image Error");
+        alert.setHeaderText(header);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
+    /**
+     *
+     */
+    private static class SamplePoint {
+        int x;
+        int y;
+
+        SamplePoint(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
 }
