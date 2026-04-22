@@ -64,6 +64,24 @@ public class LeafBenchmark {
         clusters.sort((a, b) -> Integer.compare(b.pixelCount, a.pixelCount));
     }
 
+    //
+    @TearDown(Level.Trial)
+    public void tearDown() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.exit(); // request Javafx to shutdown to avoid looooong waits between
+
+        // letting it actually terminate
+        new Thread(() -> {
+            try {
+                Thread.sleep(100); // small delay
+            } catch (InterruptedException ignored) {}
+            latch.countDown();
+        }).start();
+
+        latch.await();
+    }
+
     // benchmark 1 - how long does binary conversion take?
     @Benchmark
     public boolean[] benchmarkConvertToBinary() {

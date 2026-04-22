@@ -174,15 +174,17 @@ public class PrimaryController {
     }
 
     /**
-     *
+     * displays each cluster in a random colour
      */
     @FXML
     public void showRandomClusters() {
+        // if no clusters detected first, error msg
         if (clusters == null || clusters.isEmpty()) {
             statusLabel.setText("Detect leaves first.");
             return;
         }
 
+        // if img detected, colour randomly from ImageProcessor + display new text
         Image randomImage = ImageProcessor.makeRandomClusterImage(clusters);
         if (randomImage != null) {
             binaryView.setImage(randomImage);
@@ -191,7 +193,7 @@ public class PrimaryController {
     }
 
     /**
-     *
+     * restores the og binary ( black / white ) view
      */
     @FXML
     public void showBinaryAgain() {
@@ -202,7 +204,81 @@ public class PrimaryController {
     }
 
     /**
-     *
+     * drqws the bounding boxes around detected clusters
+     */
+    private void drawClusterBoxes() {
+        overlayPane.getChildren().clear();
+
+        if (originalImage == null) {
+            return;
+        }
+
+        double imgWidth = originalImage.getWidth();
+        double imgHeight = originalImage.getHeight();
+
+        double viewWidth = originalView.getFitWidth();
+        double viewHeight = originalView.getFitHeight();
+
+        double scale = Math.min(viewWidth / imgWidth, viewHeight / imgHeight);
+        double displayedWidth = imgWidth * scale;
+        double displayedHeight = imgHeight * scale;
+
+        double offsetX = (viewWidth - displayedWidth) / 2.0;
+        double offsetY = (viewHeight - displayedHeight) / 2.0;
+
+        if (clusters != null) {
+            for (LeafCluster cluster : clusters) {
+                Rectangle rect = new Rectangle(
+                        offsetX + cluster.minX * scale,
+                        offsetY + cluster.minY * scale,
+                        Math.max(1, cluster.getBoxWidth() * scale),
+                        Math.max(1, cluster.getBoxHeight() * scale)
+                );
+                rect.setFill(Color.TRANSPARENT);
+                rect.setStroke(Color.BLUE);
+                rect.setStrokeWidth(2);
+
+                // clicking on the selected cluster
+                LeafCluster clicked = cluster;
+                rect.setOnMouseClicked(e -> {
+                    selectedStartCluster = clicked;
+
+                    statusLabel.setText(
+                            "Cluster " + clicked.id +
+                                    " selected | pixels: " + clicked.pixelCount +
+                                    " | box: " + clicked.getBoxWidth() + "x" + clicked.getBoxHeight()
+                    );
+
+                    Image selected = ImageProcessor.makeSelectedClusterImage(clicked.root);
+                    if (selected != null) {
+                        binaryView.setImage(selected);
+                    }
+
+                    e.consume();
+                });
+
+                overlayPane.getChildren().add(rect);
+
+                // optional label displayed with rectangled cluster
+                if (labelsCheckBox.isSelected()) {
+                    Text label = new Text(
+                            offsetX + cluster.minX * scale,
+                            Math.max(12, offsetY + cluster.minY * scale - 2),
+                            String.valueOf(cluster.id)
+                    );
+                    label.setFill(Color.BLUE);
+                    label.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
+                    overlayPane.getChildren().add(label);
+                }
+            }
+        }
+
+        redrawSampleMarkers(offsetX, offsetY, scale);
+    }
+
+    /**
+     * clears all sample colours and visual markers
+     * keeps detected clusters and redraws them
      */
     @FXML
     public void clearSamples() {
@@ -210,6 +286,7 @@ public class PrimaryController {
         samplePoints.clear();
         overlayPane.getChildren().clear();
 
+        // redraw cluster boxes if they exist
         if (clusters != null && !clusters.isEmpty()) {
             drawClusterBoxes();
         }
@@ -218,18 +295,20 @@ public class PrimaryController {
     }
 
     /**
-     *
+     * fully resets the application to the initial launch
+     * stops EVERYTHING.
      */
     @FXML
     public void resetView() {
         if (originalImage == null) {
             return;
         }
-
+        // stops any animation running
         if (tspTimeline != null) {
             tspTimeline.stop();
         }
 
+        // resets all processing data + uui overlays
         binaryImage = null;
         binaryPixels = null;
         clusters.clear();
@@ -238,13 +317,15 @@ public class PrimaryController {
         selectedStartCluster = null;
         overlayPane.getChildren().clear();
         binaryView.setImage(null);
+        // restores og img
         originalView.setImage(originalImage);
 
         statusLabel.setText("Reset view. Click leaves to sample colours again.");
     }
 
     /**
-     *
+     * toggles cluster labels on/off
+     * redraws clusters depending on state of the checkbox
      */
     @FXML
     public void toggleLabels() {
@@ -252,7 +333,8 @@ public class PrimaryController {
     }
 
     /**
-     *
+     * enables selection mode for choosing starting point for the path
+     * actual selection happens when a rectangle is chosen
      */
     @FXML
     public void chooseStartCluster() {
@@ -422,117 +504,55 @@ public class PrimaryController {
     }
 
     /**
-     * drqws the bounding boxes around detected clusters
-     */
-    private void drawClusterBoxes() {
-        overlayPane.getChildren().clear();
-
-        if (originalImage == null) {
-            return;
-        }
-
-        double imgWidth = originalImage.getWidth();
-        double imgHeight = originalImage.getHeight();
-
-        double viewWidth = originalView.getFitWidth();
-        double viewHeight = originalView.getFitHeight();
-
-        double scale = Math.min(viewWidth / imgWidth, viewHeight / imgHeight);
-        double displayedWidth = imgWidth * scale;
-        double displayedHeight = imgHeight * scale;
-
-        double offsetX = (viewWidth - displayedWidth) / 2.0;
-        double offsetY = (viewHeight - displayedHeight) / 2.0;
-
-        if (clusters != null) {
-            for (LeafCluster cluster : clusters) {
-                Rectangle rect = new Rectangle(
-                        offsetX + cluster.minX * scale,
-                        offsetY + cluster.minY * scale,
-                        Math.max(1, cluster.getBoxWidth() * scale),
-                        Math.max(1, cluster.getBoxHeight() * scale)
-                );
-                rect.setFill(Color.TRANSPARENT);
-                rect.setStroke(Color.BLUE);
-                rect.setStrokeWidth(2);
-
-                // clicking on the selected cluster
-                LeafCluster clicked = cluster;
-                rect.setOnMouseClicked(e -> {
-                    selectedStartCluster = clicked;
-
-                    statusLabel.setText(
-                            "Cluster " + clicked.id +
-                                    " selected | pixels: " + clicked.pixelCount +
-                                    " | box: " + clicked.getBoxWidth() + "x" + clicked.getBoxHeight()
-                    );
-
-                    Image selected = ImageProcessor.makeSelectedClusterImage(clicked.root);
-                    if (selected != null) {
-                        binaryView.setImage(selected);
-                    }
-
-                    e.consume();
-                });
-
-                overlayPane.getChildren().add(rect);
-
-                // optional label displayed with rectangled cluster
-                if (labelsCheckBox.isSelected()) {
-                    Text label = new Text(
-                            offsetX + cluster.minX * scale,
-                            Math.max(12, offsetY + cluster.minY * scale - 2),
-                            String.valueOf(cluster.id)
-                    );
-                    label.setFill(Color.BLUE);
-                    label.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
-                    overlayPane.getChildren().add(label);
-                }
-            }
-        }
-
-        redrawSampleMarkers(offsetX, offsetY, scale);
-    }
-
-    /**
-     *
+     * refraws only the overlay layer which includes sample markers without drawing cluster boxes
+     * used when the user is sampling colours so only the markers have to be redrawn, not everythingg
      */
     private void drawOverlayOnly() {
+        // clears any existing overlay
         overlayPane.getChildren().clear();
 
+        // checks if img is loaded
         if (originalImage == null) {
             return;
         }
 
+        // og image dimensions
         double imgWidth = originalImage.getWidth();
         double imgHeight = originalImage.getHeight();
-
+        // image view display size
         double viewWidth = originalView.getFitWidth();
         double viewHeight = originalView.getFitHeight();
-
+        // compute the scale factor to fit inside the image view
         double scale = Math.min(viewWidth / imgWidth, viewHeight / imgHeight);
+        // compute displayed img size after scaling
         double displayedWidth = imgWidth * scale;
         double displayedHeight = imgHeight * scale;
-
+        // computing offsets for centering inside img view
         double offsetX = (viewWidth - displayedWidth) / 2.0;
         double offsetY = (viewHeight - displayedHeight) / 2.0;
-
+        // draw sample markers at correct scaled positions
         redrawSampleMarkers(offsetX, offsetY, scale);
     }
 
     /**
-     *
+     * draws red circle markers for each sample
+     * @param offsetY vertical offset of disp image
+     * @param offsetX horizontal '' ''
+     * @param scale scale factor from img -> view coords
      */
     private void redrawSampleMarkers(double offsetX, double offsetY, double scale) {
         for (SamplePoint p : samplePoints) {
+            // converting image coords -> screen coords
             Circle marker = new Circle(
                     offsetX + p.x * scale,
                     offsetY + p.y * scale,
-                    5
+                    5 // fixed radius for visibility
             );
+            // style marker
             marker.setFill(Color.TRANSPARENT);
             marker.setStroke(Color.RED);
             marker.setStrokeWidth(2);
+            // adding to overlay
             overlayPane.getChildren().add(marker);
         }
     }
@@ -542,7 +562,9 @@ public class PrimaryController {
     }
 
     /**
-     *
+     * displays error dialog to the user
+     * @param header short title / sum
+     * @param content actual error msg
      */
     private void showError(String header, String content) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -553,7 +575,8 @@ public class PrimaryController {
     }
 
     /**
-     *
+     * represents sampled pixel location in the og img
+     * used to redraw markers and track selected colours
      */
     private static class SamplePoint {
         int x;
