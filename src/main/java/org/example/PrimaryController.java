@@ -333,20 +333,6 @@ public class PrimaryController {
     }
 
     /**
-     * enables selection mode for choosing starting point for the path
-     * actual selection happens when a rectangle is chosen
-     */
-    @FXML
-    public void chooseStartCluster() {
-        if (clusters == null || clusters.isEmpty()) {
-            statusLabel.setText("Detect leaves first.");
-            return;
-        }
-
-        statusLabel.setText("Click a cluster rectangle to choose the TSP start cluster.");
-    }
-
-    /**
      * animates a tsp ( travelling salesman ) path in between the clusters
      */
     @FXML
