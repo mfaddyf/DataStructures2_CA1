@@ -64,7 +64,6 @@ public class LeafBenchmark {
         clusters.sort((a, b) -> Integer.compare(b.pixelCount, a.pixelCount));
     }
 
-    //
     @TearDown(Level.Trial)
     public void tearDown() throws Exception {
         CountDownLatch latch = new CountDownLatch(1);

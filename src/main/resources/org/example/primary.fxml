@@ -21,9 +21,7 @@
             <Button text="B/W" onAction="#convertToBinary"/>
             <Button text="Detect" onAction="#detectLeaves"/>
             <Button text="Random" onAction="#showRandomClusters"/>
-            <Button text="Show B/W" onAction="#showBinaryAgain"/>
             <Button text="Clear" onAction="#clearSamples"/>
-            <Button text="Start" onAction="#chooseStartCluster"/>
             <Button text="Animate" onAction="#animateTspPath"/>
             <Button text="Reset" onAction="#resetView"/>
 
